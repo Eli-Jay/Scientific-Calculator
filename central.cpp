@@ -18,6 +18,7 @@ int prec(string oper) {
 	if (oper == "^") return 3;
 	if (oper == "*") return 2;
 	if (oper == "/") return 2;
+	if (oper == "%") return 2;
 	if (oper == "+") return 1;
 	if (oper == "-") return 1;
 	return 0;
@@ -50,9 +51,37 @@ bool is_num(string num) {
 	}
 }
 
+//Bubble sort (TODO: Use more efficient sorting method later)
+vector<long double> bubble_sort(vector<long double> lst) {
+	for (size_t i = 0; i < lst.size() - 1; i++) {
+		for (size_t j = 0; j < lst.size() - 1; j++) {
+			if (lst[j] >= lst[j + 1]) {
+				std::swap(lst[j], lst[j+1]);
+			}
+		}
+	}
+	return lst;
+}
+
+
 // Checks if a string is in a vector of strings
 bool in_arr_str(vector<string> lst, string c) {
 	for (string i : lst) if (i == c) return true;
+	return false;
+}
+
+bool in_arr_flt(vector<long double> lst, long double c) {
+	for (long double i : lst) {
+		//printf("hi %lf %lf\n", i, c);
+		if (std::abs(i-c) < 0.0001) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool condition_array(vector<bool> lst) {
+	for (bool i : lst) if (i == true) return true;
 	return false;
 }
 
@@ -66,7 +95,7 @@ bool is_alpha(string str) {
 vector<string> post_fix_conv(string exp) {
 	vector<string> stack_1;
 	vector<string> OUT;
-	vector<string> operators = { "^", "*", "/", "+", "-" };
+	vector<string> operators = { "^", "*", "/", "+", "-", "%"};
 	string c;
 	size_t size_exp = exp.length();
 	int i = 0;
@@ -138,13 +167,13 @@ vector<string> post_fix_conv(string exp) {
 }
 
 // Solves the post fix expression
-double post_fix_exp_solver(vector<string> stack_1) {
+long double post_fix_exp_solver(vector<string> stack_1) {
 	
-	vector<double> stack_2;
-	vector<string> operators = { "^", "*", "/", "+", "-" };
+	vector<long double> stack_2;
+	vector<string> operators = { "^", "*", "/", "+", "-", "%"};
 	size_t n = stack_1.size();
-	double f_num;
-	double s_num;
+	long double f_num;
+	long double s_num;
 	for (int i = 0; i < n; i++) {
 
 		// Case where stack_1[i] is a number
@@ -165,6 +194,7 @@ double post_fix_exp_solver(vector<string> stack_1) {
 			if (stack_1[i] == "+") stack_2.push_back(f_num + s_num);
 			if (stack_1[i] == "-") stack_2.push_back(f_num - s_num);
 			if (stack_1[i] == "*") stack_2.push_back(f_num * s_num);
+			//if (stack_1[i] == "%") stack_2.push_back(f_num % s_num); TODO FIX
 
 			// Operators with special cases
 			if (stack_1[i] == "/") {
@@ -184,7 +214,10 @@ double post_fix_exp_solver(vector<string> stack_1) {
 			}
 
 		}
-		else std::cout << "ERROR :" << i;
+		else { 
+			for (string c : stack_1) std::cout << c;
+			std::cout << "\nERROR :" << i; 
+		}
 
 	}
 
@@ -192,13 +225,13 @@ double post_fix_exp_solver(vector<string> stack_1) {
 }
 
 // Solves string expressions
-double exp_solver(string exp) {
-
+long double exp_solver(string exp) {
 	return post_fix_exp_solver(post_fix_conv(exp));
 }
 
-double f_x(string exp, char var, double x) {
-
+long double f_x(string exp, char var, double x) {
+	//std::cout << x << "\n";
+	//printf("%.15f\n", x);
 	string point_str = std::to_string(x);
 	string pattern = std::string(1, var);
 	string temp_exp = std::regex_replace(exp, std::regex(pattern), point_str);
@@ -248,16 +281,17 @@ double derivative_point(string exp, double point, char var) {
 }
 
 // Expression solving (NO CAS)
-double bisection_method(std::string equ, char var, double a, double b) {
+double bisection_method(string equ, char var, double a, double b) {
 	size_t small_iter = 0;
 	size_t max_iter = 500;
-	double precision = 1e-8;
+	long double precision = 1e-8;
 	long double c = 0;
-
+	
 	long double f_a = f_x(equ, var, a);
 	long double f_b = f_x(equ, var, b);
+	long double f_c;
 
-	// Ensure initial interval has a root
+	// Ensure initial interval has a root TODO: and possible tangents
 	while (f_a * f_b > 0) {
 		a *= 2;
 		b *= 2;
@@ -267,10 +301,11 @@ double bisection_method(std::string equ, char var, double a, double b) {
 		if (small_iter >= 200) return 404.404; // No root found in a reasonable interval
 	}
 
-	// Main bisection loop
 	for (size_t i = 0; i <= max_iter; i++) {
 		c = (a + b) / 2;
-		long double f_c = f_x(equ, var, c);
+		f_c = f_x(equ, var, c);
+
+		
 
 		// If f(c) is close enough to zero, return c
 		if (std::abs(f_c) < precision) {
@@ -296,4 +331,135 @@ double bisection_method(std::string equ, char var, double a, double b) {
 	}
 
 	return 34434.404;  // Return if max iterations reached without convergence
+}
+
+
+// Brent method. 
+long double brent_method(string equ, char var, long double lim_a, long double lim_b) {
+	long double a = lim_a;
+	long double b = lim_b;
+	long double f_a = f_x(equ, var, a);
+	long double f_b = f_x(equ, var, b);
+	long double precision = 1e-10;
+	size_t MAX_ITER = 100;
+
+	//if (f_a * f_b >= 0) {
+	//	std::cerr << "Root not bracketed: f(a) and f(b) must have opposite signs." << std::endl;
+	//	return 404;  // Indicate failure
+	//}
+
+	if (std::abs(f_a) < std::abs(f_b)) {
+		std::swap(a, b);
+		std::swap(f_a, f_b);
+	}
+
+	long double c = a;
+	long double f_c = f_a;
+	long double d = b - a;
+	long double s = (a + b) / 2;
+	bool mflag = true;
+
+	for (size_t i = 0; i <= MAX_ITER; i++) {
+		//precision = std::min(precision, std::abs(b - a) * 1e-10);
+
+		//std::cout << a << "A\n";
+		f_a = f_x(equ, var, a);
+		//std::cout << b << "B\n";
+		f_b = f_x(equ, var, b);
+		//std::cout << "C\n";
+		f_c = f_x(equ, var, c);
+
+		// Secant or inverse quadratic interpolation
+		if ((f_a != f_c) && (f_b != f_c)) {
+			s = (a * f_b * f_c) / ((f_a - f_b) * (f_a - f_c)) +
+				(b * f_a * f_c) / ((f_b - f_a) * (f_b - f_c)) +
+				(c * f_a * f_b) / ((f_c - f_a) * (f_c - f_b));
+			//std::cout << s << "S-QUAD\n";
+		}
+		else if (f_b - f_a != 0){
+			s = b - f_b * ((b - a) / (f_b - f_a));
+			//std::cout << s << f_b << f_a << "S-NONQUAD\n";
+		}
+		//else s = (a + b) / 2;
+
+		// Define conditions
+		std::vector<bool> conditions = {
+			(s < (3 * a + b) / 4 || s > b),               // C1
+			(mflag && std::abs(s - b) >= std::abs(b - c) / 2), // C2
+			(!mflag && std::abs(s - b) >= std::abs(c - d) / 2), // C3
+			(mflag && std::abs(b - c) < precision),          // C4
+			(!mflag && std::abs(c - d) < precision)          // C5
+		};
+
+		// Check if any condition is true; if so, use bisection
+		if (condition_array(conditions)) {
+			s = (a + b) / 2;
+			//std::cout << s << "S-CONDITIONS\n";
+			mflag = true;
+		}
+		else {
+			mflag = false;
+		}
+		//std::cout << s << "S\n";
+		double f_s = f_x(equ, var, s);
+		d = c;
+		c = b;
+		f_c = f_b;
+
+		if (f_a * f_s < 0) {
+			b = s;
+			f_b = f_s;
+		}
+		else {
+			a = s;
+			f_a = f_s;
+		}
+
+		if (std::abs(f_a) < std::abs(f_b)) {
+			std::swap(a, b);
+			std::swap(f_a, f_b);
+		}
+
+		//if (std::abs(b - a) < precision || std::abs(f_b) < precision) {
+		//	return b;
+		//}
+		//std::cout << "INT\n";
+		//if (b == lim_a || b == lim_b) return 404; // Checks if it tries to converge on a value outside the limits.
+		//if (f_x(equ, var, std::round(b)) == 0) return std::round(b); // Checks for integers. Can speed up the algorithm a lot and returns exact values.
+		//std::cout << f_b << "fb\n";
+		if (std::abs(f_b) < precision) {
+			if (b == lim_a || b == lim_b) return 404.0; // Checks if it tries to converge on a value outside the limits.
+			return b;
+		}
+	}
+
+	return 404.0;
+}
+
+vector<long double> equ_solver(string equ, char var, long double a, long double b) {
+	long double current = a;
+	vector<long double> zeros = {-100,100};
+	size_t MAX_ITER = 50;
+	size_t i = 0;
+
+
+	for (size_t j = 0; j < zeros.size()-1; j) {
+		current = brent_method(equ, var, zeros[j] + 0.00001, zeros[j+1] - 0.00001);
+		//printf("iter: %d: Checking between %lf and %lf\n",j , zeros[j], zeros[j + 1]);
+		if (current != 404 && in_arr_flt(zeros, current) != true) { 
+			//printf("Zero %lf was found. Starting back at 0.\n", current);
+			zeros.push_back(current); 
+			j = 0;
+			zeros = bubble_sort(zeros);
+			//printf("New zero list: ");
+			//for (long double t : zeros) printf("%lf ", t);
+			//std::cout << '\n';
+		}
+		else {
+			j++;
+		}
+	}
+
+	return zeros;
+
 }

@@ -17,8 +17,13 @@ int main()
 
     //cout << '\n' << integration(5,0,"2*x*x",'x');
     //cout << '\n' << derivative_point("2*x", 1, 'x');
+    
+    
+    //cout << "\n" << brent_method("0.1*(x-1)*(x+2)*(x-3)*(x+4)*(x-5)", 'x', -4, 0);
+    
+    vector<long double> zeros = equ_solver("0.1*(x-1)*(x+2)*(x-3)*(x+4)*(x-17.1)", 'x', -1000, 1000);
+    for (long double i : zeros) printf("%lf ", i);
 
-    cout << '\n' << bisection_method("x^2", 'x', -0.02, 0.01);
 
     return 0;
     string exp;
