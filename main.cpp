@@ -15,14 +15,15 @@ using std::cin;
 int main()
 {   
 
-    //cout << '\n' << integration(5,0,"2*x*x",'x');
-    //cout << '\n' << derivative_point("2*x", 1, 'x');
+    //cout << '\n' << integration(1.1,-100,"(1/(x-1))",'x');
+    //cout << '\n' << derivative_point("(1/(x-1))-2", 100, 'x');
     
     
-    //cout << "\n" << brent_method("0.1*(x-1)*(x+2)*(x-3)*(x+4)*(x-5)", 'x', -4, 0);
-    
-    vector<long double> zeros = equ_solver("0.1*(x-1)*(x+2)*(x-3)*(x+4)*(x-17.1)", 'x', -1000, 1000);
-    for (long double i : zeros) printf("%lf ", i);
+    //cout << "\n" << brent_method("(x^3-6*x^2+11*x-6)/(x^2-1)+2.71^(x/5)-10/(x-0.5)", "x", 1, 10);    
+ 
+    //return 0;
+    vector<double> zeros = equ_solver("(x^3-6*x^2+11*x-6)/(x^2-1)+2.71^(x/5)-10/(x-0.5)", "x", -10, 10);
+    for (double i : zeros) printf("%lf ", i);
 
 
     return 0;

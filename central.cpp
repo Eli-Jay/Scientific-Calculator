@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <vector>
 #include "central.h"
 #include <limits>
 #include <cmath>
@@ -52,7 +53,7 @@ bool is_num(string num) {
 }
 
 //Bubble sort (TODO: Use more efficient sorting method later)
-vector<long double> bubble_sort(vector<long double> lst) {
+vector<double> bubble_sort(vector<double> lst) {
 	for (size_t i = 0; i < lst.size() - 1; i++) {
 		for (size_t j = 0; j < lst.size() - 1; j++) {
 			if (lst[j] >= lst[j + 1]) {
@@ -65,12 +66,12 @@ vector<long double> bubble_sort(vector<long double> lst) {
 
 
 // Checks if a string is in a vector of strings
-bool in_arr_str(vector<string> lst, string c) {
-	for (string i : lst) if (i == c) return true;
-	return false;
+bool in_arr_str(const vector<string>& lst, const string& c) {
+    for (const auto& i : lst) if (i == c) return true;
+    return false;
 }
 
-bool in_arr_flt(vector<long double> lst, long double c) {
+bool in_arr_flt(vector<double> lst, double c) {
 	for (long double i : lst) {
 		//printf("hi %lf %lf\n", i, c);
 		if (std::abs(i-c) < 0.0001) {
@@ -167,13 +168,14 @@ vector<string> post_fix_conv(string exp) {
 }
 
 // Solves the post fix expression
-long double post_fix_exp_solver(vector<string> stack_1) {
+double post_fix_exp_solver(vector<string> stack_1) {
 	
-	vector<long double> stack_2;
+	vector<double> stack_2;
 	vector<string> operators = { "^", "*", "/", "+", "-", "%"};
 	size_t n = stack_1.size();
-	long double f_num;
-	long double s_num;
+	double f_num;
+	double s_num;
+	double result;
 	for (int i = 0; i < n; i++) {
 
 		// Case where stack_1[i] is a number
@@ -191,27 +193,28 @@ long double post_fix_exp_solver(vector<string> stack_1) {
 			stack_2.pop_back();
 
 			// Operator cases
-			if (stack_1[i] == "+") stack_2.push_back(f_num + s_num);
-			if (stack_1[i] == "-") stack_2.push_back(f_num - s_num);
-			if (stack_1[i] == "*") stack_2.push_back(f_num * s_num);
+			if (stack_1[i] == "+") result = (f_num + s_num);
+			if (stack_1[i] == "-") result = (f_num - s_num);
+			if (stack_1[i] == "*") result = (f_num * s_num);
 			//if (stack_1[i] == "%") stack_2.push_back(f_num % s_num); TODO FIX
 
 			// Operators with special cases
 			if (stack_1[i] == "/") {
 				if (s_num == 0) {
-					stack_2.push_back(std::numeric_limits<float>::quiet_NaN());
+					result = (std::numeric_limits<float>::quiet_NaN());
 				}
-				else stack_2.push_back(f_num/s_num);	
+				else result = (f_num/s_num);	
 			}
 
 			if (stack_1[i] == "^") {
 
 				if (f_num == 0 && s_num < 0) {
-					stack_2.push_back(std::numeric_limits<float>::quiet_NaN());
+					result = (std::numeric_limits<float>::quiet_NaN());
 				}
-				else stack_2.push_back(std::pow(f_num, s_num));
+				else result = (std::pow(f_num, s_num));
 
 			}
+			stack_2.push_back(result);
 
 		}
 		else { 
@@ -225,11 +228,11 @@ long double post_fix_exp_solver(vector<string> stack_1) {
 }
 
 // Solves string expressions
-long double exp_solver(string exp) {
+double exp_solver(string exp) {
 	return post_fix_exp_solver(post_fix_conv(exp));
 }
 
-long double f_x(string exp, char var, double x) {
+double f_x(string exp, char var, double x) {
 	//std::cout << x << "\n";
 	//printf("%.15f\n", x);
 	string point_str = std::to_string(x);
@@ -237,6 +240,18 @@ long double f_x(string exp, char var, double x) {
 	string temp_exp = std::regex_replace(exp, std::regex(pattern), point_str);
 	return post_fix_exp_solver(post_fix_conv(temp_exp));
 
+}
+
+// Takes in a postfix expression instead. Should be much quicker.
+double f_pf(vector<string> equ, string var, double x) {
+
+	string point_str = std::to_string(x);
+	for (size_t i = 0; i < equ.size(); i++) {
+		if (equ[i] == var) {
+			equ[i] = point_str;
+		}
+	}
+	return post_fix_exp_solver(equ);
 }
 
 // Integration given limits (NO CAS)
@@ -264,6 +279,7 @@ double integration(double upper_bound, double lower_bound, string exp, char var)
 
 		x = ((upper_bound - lower_bound) / 2) * nodes[i - 1] + (upper_bound + lower_bound) / 2;
 		res += weights[i - 1] * f_x(exp, var, x);
+		std::cout << res;
 	}
 	
 	return res * (upper_bound - lower_bound)/2;
@@ -280,16 +296,30 @@ double derivative_point(string exp, double point, char var) {
 	return f_prime;
 }
 
+//Derivative at a point, exactly like previous function but takes in post fix.
+double f_prime_pf(vector<string> equ_pf, string var, double point) {
+
+	double h = 1e-6;
+
+	double f_prime = -1 * f_pf(equ_pf, var, point + 2 * h) + 8 * f_pf(equ_pf, var, point + h)
+		- 8 * f_pf(equ_pf, var, point - h) + f_pf(equ_pf, var, point - 2 * h);
+	f_prime /= (12 * h);
+
+	return f_prime;
+}
+
+
+
 // Expression solving (NO CAS)
 double bisection_method(string equ, char var, double a, double b) {
 	size_t small_iter = 0;
 	size_t max_iter = 500;
-	long double precision = 1e-8;
-	long double c = 0;
+	double precision = 1e-8;
+	double c = 0;
 	
-	long double f_a = f_x(equ, var, a);
-	long double f_b = f_x(equ, var, b);
-	long double f_c;
+	double f_a = f_x(equ, var, a);
+	double f_b = f_x(equ, var, b);
+	double f_c;
 
 	// Ensure initial interval has a root TODO: and possible tangents
 	while (f_a * f_b > 0) {
@@ -334,40 +364,141 @@ double bisection_method(string equ, char var, double a, double b) {
 }
 
 
-// Brent method. 
-long double brent_method(string equ, char var, long double lim_a, long double lim_b) {
-	long double a = lim_a;
-	long double b = lim_b;
-	long double f_a = f_x(equ, var, a);
-	long double f_b = f_x(equ, var, b);
-	long double precision = 1e-10;
-	size_t MAX_ITER = 100;
 
-	//if (f_a * f_b >= 0) {
-	//	std::cerr << "Root not bracketed: f(a) and f(b) must have opposite signs." << std::endl;
-	//	return 404;  // Indicate failure
-	//}
+double newton_method(string equ, string var, double guess) {
+	vector<string> equ_postfix = post_fix_conv(equ);
+
+	double current = guess;
+	double f_x;
+	double f_x_prime;
+	double new_val;
+	double f_new_val;
+	double precision = 1e-6;
+	size_t MAX_ITER = 1000;
+
+	for (size_t i = 0; i < MAX_ITER; i++) {
+		f_x = f_pf(equ_postfix, var, current);
+		f_x_prime = f_prime_pf(equ_postfix, var, current);
+
+		if (f_x_prime != 0) {
+			new_val = current - f_x / f_x_prime;
+		}
+		else {
+			new_val = 0;
+		}
+
+		f_new_val = f_pf(equ_postfix, var, current);
+		if (std::abs(new_val - current) < precision) {
+			return new_val;
+		}
+
+
+		if (std::isnan(new_val)) {
+			current += 1e-5;
+		}
+		else {
+			current = new_val;
+		}
+	}
+
+	return 404;
+}
+
+// Brent method. 
+double brent_method(string equ, string var, double lim_a, double lim_b) {
+	vector<string> equ_postfix = post_fix_conv(equ);
+	double a = lim_a;
+	double b = lim_b;
+	double f_a = f_pf(equ_postfix, var, a);
+	double f_b = f_pf(equ_postfix, var, b);
+	double f_s;
+	double precision = 1e-3;
+	size_t i = 0;
+	size_t MAX_ITER = 30;
+
+	// Checks for nan values to prevent errors near values that go to infinity.
+	while (std::isnan(f_a)) {
+		a += 0.05;
+		f_a = f_pf(equ_postfix, var, a);
+	}
+	while (std::isnan(f_b)) {
+		b -= 0.05;
+		f_b = f_pf(equ_postfix, var, b);
+	}
+
 
 	if (std::abs(f_a) < std::abs(f_b)) {
 		std::swap(a, b);
 		std::swap(f_a, f_b);
 	}
 
-	long double c = a;
-	long double f_c = f_a;
-	long double d = b - a;
-	long double s = (a + b) / 2;
+	double c = a;
+	double f_c = f_a;
+	double d = b - a;
+	double s = (a + b) / 2;
 	bool mflag = true;
+
+	f_s = f_pf(equ_postfix, var, s);
+
+	// This portion is for avoiding anomolies. TODO Extremely inneficient.
+	double a_check_0 = f_pf(equ_postfix, var, lim_a);
+	double a_check_1 = a_check_0;
+	size_t j = 0;
+	for (double t = lim_a; t <= lim_b; t+=0.02) {
+		//std::cout << a_check_1;
+		a_check_0 = a_check_1;
+		a_check_1 = f_pf(equ_postfix, var, t);
+		//j++;
+		//std::cout << j;
+		if (std::abs(a_check_0 - a_check_1) >= 2000) { // Detects an anomoly
+			printf("Anomoly near: %lf\n", t);
+			printf("Continuing between %lf and %lf\n", lim_a, t - 0.01);
+
+			a_check_0 = brent_method(equ, var, lim_a, t - 0.01);
+
+			if (a_check_0 == 404) {
+				printf("No zero found between %lf %lf\n", lim_a, t - 0.01);
+				printf("Continuing between %lf and %lf\n", t+0.01, lim_b);
+				a_check_1 = brent_method(equ, var, t + 0.01, lim_b);
+				if (a_check_1 == 404){ 
+					printf("No zero found between %lf %lf\n", t + 0.01, lim_b);
+					return 404; 
+				}
+				else { 
+					printf("Zero found at %lf\n", a_check_1);
+					return a_check_1;
+				}
+			}
+			else { 
+				printf("Zero found at %lf\n", a_check_0);
+				return a_check_0; 
+			}
+		}
+	}
+
 
 	for (size_t i = 0; i <= MAX_ITER; i++) {
 		//precision = std::min(precision, std::abs(b - a) * 1e-10);
 
-		//std::cout << a << "A\n";
-		f_a = f_x(equ, var, a);
-		//std::cout << b << "B\n";
-		f_b = f_x(equ, var, b);
-		//std::cout << "C\n";
-		f_c = f_x(equ, var, c);
+		f_a = f_pf(equ_postfix, var, a);
+		f_b = f_pf(equ_postfix, var, b);
+
+		//printf("f_a, a: %lf %lf\nf_b, b: %lf %lf\nf_c, c: %lf %lf\nf_s, s: %lf, %lf\n", f_a, a, f_b, b, f_c, c, f_s, s);
+
+		// Checks for nan values to prevent errors near values that go to infinity.
+		while (std::isnan(f_a)) {
+			a += precision;
+			f_a = f_pf(equ_postfix, var, a);
+		}
+
+		while (std::isnan(f_b)) {
+			b -= precision;
+			f_b = f_pf(equ_postfix, var, b);
+		}
+		f_c = f_pf(equ_postfix, var, c);
+
+		//printf("AFTER:\nf_a, a: %lf %lf\nf_b, b: %lf %lf\nf_c, c: %lf %lf\nf_s, s: %lf, %lf\n", f_a, a, f_b, b, f_c, c, f_s, s);
+
 
 		// Secant or inverse quadratic interpolation
 		if ((f_a != f_c) && (f_b != f_c)) {
@@ -378,7 +509,7 @@ long double brent_method(string equ, char var, long double lim_a, long double li
 		}
 		else if (f_b - f_a != 0){
 			s = b - f_b * ((b - a) / (f_b - f_a));
-			//std::cout << s << f_b << f_a << "S-NONQUAD\n";
+			//std::cout << s << "S-NONQUAD\n";
 		}
 		//else s = (a + b) / 2;
 
@@ -401,7 +532,9 @@ long double brent_method(string equ, char var, long double lim_a, long double li
 			mflag = false;
 		}
 		//std::cout << s << "S\n";
-		double f_s = f_x(equ, var, s);
+		f_s = f_pf(equ_postfix, var, s);
+
+		
 		d = c;
 		c = b;
 		f_c = f_b;
@@ -415,45 +548,40 @@ long double brent_method(string equ, char var, long double lim_a, long double li
 			f_a = f_s;
 		}
 
-		if (std::abs(f_a) < std::abs(f_b)) {
-			std::swap(a, b);
-			std::swap(f_a, f_b);
-		}
-
-		//if (std::abs(b - a) < precision || std::abs(f_b) < precision) {
-		//	return b;
+		//if (std::abs(f_a) < std::abs(f_b)) {
+		//	std::swap(a, b);
+		//	std::swap(f_a, f_b);
 		//}
-		//std::cout << "INT\n";
-		//if (b == lim_a || b == lim_b) return 404; // Checks if it tries to converge on a value outside the limits.
-		//if (f_x(equ, var, std::round(b)) == 0) return std::round(b); // Checks for integers. Can speed up the algorithm a lot and returns exact values.
-		//std::cout << f_b << "fb\n";
-		if (std::abs(f_b) < precision) {
-			if (b == lim_a || b == lim_b) return 404.0; // Checks if it tries to converge on a value outside the limits.
-			return b;
+
+		//printf("%.19f\n", s);
+		if (std::abs(f_s) < precision) {
+			if (s == lim_a || s == lim_b) return 404.0; // Checks if it tries to converge on a value outside the limits.
+			return newton_method(equ, var, s);
 		}
 	}
 
 	return 404.0;
 }
 
-vector<long double> equ_solver(string equ, char var, long double a, long double b) {
-	long double current = a;
-	vector<long double> zeros = {-100,100};
+vector<double> equ_solver(string equ, string var, double a, double b) {
+	double current = a;
+	vector<double> zeros = {a,b};
+	vector<double> zeros_return;
 	size_t MAX_ITER = 50;
 	size_t i = 0;
 
 
 	for (size_t j = 0; j < zeros.size()-1; j) {
+		printf("iter: %zd: Checking between %lf and %lf\n", j, zeros[j], zeros[j + 1]);
 		current = brent_method(equ, var, zeros[j] + 0.00001, zeros[j+1] - 0.00001);
-		//printf("iter: %d: Checking between %lf and %lf\n",j , zeros[j], zeros[j + 1]);
 		if (current != 404 && in_arr_flt(zeros, current) != true) { 
-			//printf("Zero %lf was found. Starting back at 0.\n", current);
+			printf("Zero %lf was found.\n", current);
 			zeros.push_back(current); 
-			j = 0;
+			//j = 0;
 			zeros = bubble_sort(zeros);
-			//printf("New zero list: ");
-			//for (long double t : zeros) printf("%lf ", t);
-			//std::cout << '\n';
+			printf("New zero list: ");
+			for (long double t : zeros) printf("%lf ", t);
+			std::cout << '\n';
 		}
 		else {
 			j++;
