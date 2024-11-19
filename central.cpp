@@ -242,6 +242,8 @@ double f_x(string exp, char var, double x) {
 
 }
 
+
+
 // Takes in a postfix expression instead. Should be much quicker.
 double f_pf(vector<string> equ, string var, double x) {
 
@@ -286,7 +288,7 @@ double integration(double upper_bound, double lower_bound, string exp, char var)
 }
 
 // Calculates derivative at a point (NO CAS)
-double derivative_point(string exp, double point, char var) {
+double f_prime(string exp, double point, char var) {
 	
 	double h = 1e-6;
 	double f_prime = -1 * f_x(exp, var, point + 2 * h) + 8 * f_x(exp, var, point + h)
@@ -298,7 +300,6 @@ double derivative_point(string exp, double point, char var) {
 
 //Derivative at a point, exactly like previous function but takes in post fix.
 double f_prime_pf(vector<string> equ_pf, string var, double point) {
-
 	double h = 1e-6;
 
 	double f_prime = -1 * f_pf(equ_pf, var, point + 2 * h) + 8 * f_pf(equ_pf, var, point + h)
@@ -307,6 +308,17 @@ double f_prime_pf(vector<string> equ_pf, string var, double point) {
 
 	return f_prime;
 }
+
+double f_double_prime_pf(vector<string> equ_pf, string var, double point) {
+	double h = 1e-6;
+
+	double f_double_prime = -1 * f_pf(equ_pf, var, point + 2 * h) + 16 * f_pf(equ_pf, var, point + h)
+		- 30 * f_pf(equ_pf, var, point) + 16 * f_pf(equ_pf, var, point - h) - f_pf(equ_pf, var, point - 2 * h);
+	f_double_prime /= (12 * h * h);
+
+	return f_double_prime;
+}
+
 
 
 
@@ -403,26 +415,27 @@ double newton_method(string equ, string var, double guess) {
 
 	return 404;
 }
-
 // Brent method. 
-double brent_method(string equ, string var, double lim_a, double lim_b) {
+vector<double> brent_method(string equ, string var, double lim_a, double lim_b) {
 	vector<string> equ_postfix = post_fix_conv(equ);
-	double a = lim_a;
-	double b = lim_b;
+	double a = lim_a, b = lim_b;
 	double f_a = f_pf(equ_postfix, var, a);
 	double f_b = f_pf(equ_postfix, var, b);
 	double f_s;
 	double precision = 1e-3;
-	size_t i = 0;
-	size_t MAX_ITER = 30;
+	size_t MAX_ITER = 100;
 
-	// Checks for nan values to prevent errors near values that go to infinity.
-	while (std::isnan(f_a)) {
-		a += 0.05;
+	// Check for initial NaN values
+	//while (std::isnan(f_a)) { a += 0.05; f_a = f_pf(equ_postfix, var, a); }
+	//while (std::isnan(f_b)) { b -= 0.05; f_b = f_pf(equ_postfix, var, b); }
+
+	// Improved NaN and asymptote handling in Brent's Method
+	if (std::isnan(f_a)) {
+		a += (b - a) * 0.1; // Move slightly away from a
 		f_a = f_pf(equ_postfix, var, a);
 	}
-	while (std::isnan(f_b)) {
-		b -= 0.05;
+	if (std::isnan(f_b)) {
+		b -= (b - a) * 0.1; // Move slightly away from b
 		f_b = f_pf(equ_postfix, var, b);
 	}
 
@@ -432,155 +445,131 @@ double brent_method(string equ, string var, double lim_a, double lim_b) {
 		std::swap(f_a, f_b);
 	}
 
-	double c = a;
-	double f_c = f_a;
-	double d = b - a;
-	double s = (a + b) / 2;
+	double c = a, f_c = f_a;
+	double d = b - a, s = (a + b) / 2;
 	bool mflag = true;
-
 	f_s = f_pf(equ_postfix, var, s);
+	if (std::isnan(f_s)) return { s, 1 };
 
-	// This portion is for avoiding anomolies. TODO Extremely inneficient.
-	double a_check_0 = f_pf(equ_postfix, var, lim_a);
-	double a_check_1 = a_check_0;
-	size_t j = 0;
-	for (double t = lim_a; t <= lim_b; t+=0.02) {
-		//std::cout << a_check_1;
-		a_check_0 = a_check_1;
-		a_check_1 = f_pf(equ_postfix, var, t);
-		//j++;
-		//std::cout << j;
-		if (std::abs(a_check_0 - a_check_1) >= 2000) { // Detects an anomoly
-			printf("Anomoly near: %lf\n", t);
-			printf("Continuing between %lf and %lf\n", lim_a, t - 0.01);
-
-			a_check_0 = brent_method(equ, var, lim_a, t - 0.01);
-
-			if (a_check_0 == 404) {
-				printf("No zero found between %lf %lf\n", lim_a, t - 0.01);
-				printf("Continuing between %lf and %lf\n", t+0.01, lim_b);
-				a_check_1 = brent_method(equ, var, t + 0.01, lim_b);
-				if (a_check_1 == 404){ 
-					printf("No zero found between %lf %lf\n", t + 0.01, lim_b);
-					return 404; 
-				}
-				else { 
-					printf("Zero found at %lf\n", a_check_1);
-					return a_check_1;
-				}
-			}
-			else { 
-				printf("Zero found at %lf\n", a_check_0);
-				return a_check_0; 
-			}
-		}
-	}
-
-
+	// Main Brent method loop
 	for (size_t i = 0; i <= MAX_ITER; i++) {
-		//precision = std::min(precision, std::abs(b - a) * 1e-10);
-
 		f_a = f_pf(equ_postfix, var, a);
 		f_b = f_pf(equ_postfix, var, b);
 
-		//printf("f_a, a: %lf %lf\nf_b, b: %lf %lf\nf_c, c: %lf %lf\nf_s, s: %lf, %lf\n", f_a, a, f_b, b, f_c, c, f_s, s);
+		// **Derivative-based anomaly detection**
+		double f_prime_s = f_prime_pf(equ_postfix, var, s);
+		double f_prime_a = f_prime_pf(equ_postfix, var, a);
+		double f_prime_b = f_prime_pf(equ_postfix, var, b);
 
-		// Checks for nan values to prevent errors near values that go to infinity.
-		while (std::isnan(f_a)) {
-			a += precision;
+		// Relative difference detection
+		double delta_ab = std::abs((f_a - f_b) / std::max(std::abs(f_a), std::abs(f_b)));
+		double delta_prime = std::max({ std::abs(f_prime_a), std::abs(f_prime_b), std::abs(f_prime_s) });
+
+		// Detect rapid changes using derivative magnitude or a relative difference threshold
+
+
+		// Detect anomalies at a, b, or s
+		if (delta_ab > 0.5 && delta_ab < 1.7 && delta_prime >= 1e6) {
+			printf("%lf %lf", delta_ab, delta_prime);
+			if (std::abs(f_prime_a) >= 100000) {
+				printf("Anomaly detected near a: %lf\n", a);
+				return { a, 1 };
+			}
+			if (std::abs(f_prime_b) >= 100000) {
+				printf("Anomaly detected near b: %lf\n", b);
+				return { b, 1 };
+			}
+			if (std::abs(f_prime_s) >= 100000) {
+				printf("Anomaly detected near s: %lf\n", s);
+				return { s, 1 };
+			}
+		}
+
+		// Handle NaNs
+		// Improved NaN and asymptote handling in Brent's Method
+		if (std::isnan(f_a)) {
+			a += (b - a) * 0.1; // Move slightly away from a
 			f_a = f_pf(equ_postfix, var, a);
 		}
-
-		while (std::isnan(f_b)) {
-			b -= precision;
+		if (std::isnan(f_b)) {
+			b -= (b - a) * 0.1; // Move slightly away from b
 			f_b = f_pf(equ_postfix, var, b);
 		}
+
 		f_c = f_pf(equ_postfix, var, c);
-
-		//printf("AFTER:\nf_a, a: %lf %lf\nf_b, b: %lf %lf\nf_c, c: %lf %lf\nf_s, s: %lf, %lf\n", f_a, a, f_b, b, f_c, c, f_s, s);
-
 
 		// Secant or inverse quadratic interpolation
 		if ((f_a != f_c) && (f_b != f_c)) {
 			s = (a * f_b * f_c) / ((f_a - f_b) * (f_a - f_c)) +
 				(b * f_a * f_c) / ((f_b - f_a) * (f_b - f_c)) +
 				(c * f_a * f_b) / ((f_c - f_a) * (f_c - f_b));
-			//std::cout << s << "S-QUAD\n";
 		}
-		else if (f_b - f_a != 0){
+		else if (f_b - f_a != 0) {
 			s = b - f_b * ((b - a) / (f_b - f_a));
-			//std::cout << s << "S-NONQUAD\n";
 		}
-		//else s = (a + b) / 2;
 
-		// Define conditions
 		std::vector<bool> conditions = {
-			(s < (3 * a + b) / 4 || s > b),               // C1
-			(mflag && std::abs(s - b) >= std::abs(b - c) / 2), // C2
-			(!mflag && std::abs(s - b) >= std::abs(c - d) / 2), // C3
-			(mflag && std::abs(b - c) < precision),          // C4
-			(!mflag && std::abs(c - d) < precision)          // C5
+			(s < (3 * a + b) / 4 || s > b),
+			(mflag && std::abs(s - b) >= std::abs(b - c) / 2),
+			(!mflag && std::abs(s - b) >= std::abs(c - d) / 2),
+			(mflag && std::abs(b - c) < precision),
+			(!mflag && std::abs(c - d) < precision)
 		};
 
-		// Check if any condition is true; if so, use bisection
 		if (condition_array(conditions)) {
 			s = (a + b) / 2;
-			//std::cout << s << "S-CONDITIONS\n";
 			mflag = true;
 		}
 		else {
 			mflag = false;
 		}
-		//std::cout << s << "S\n";
-		f_s = f_pf(equ_postfix, var, s);
 
-		
-		d = c;
-		c = b;
-		f_c = f_b;
+		f_s = f_pf(equ_postfix, var, s);
+		d = c; c = b; f_c = f_b;
 
 		if (f_a * f_s < 0) {
-			b = s;
-			f_b = f_s;
+			b = s; f_b = f_s;
 		}
 		else {
-			a = s;
-			f_a = f_s;
+			a = s; f_a = f_s;
 		}
 
-		//if (std::abs(f_a) < std::abs(f_b)) {
-		//	std::swap(a, b);
-		//	std::swap(f_a, f_b);
-		//}
-
-		//printf("%.19f\n", s);
+		//printf("current: %lf, %lf\n", f_s, s);
 		if (std::abs(f_s) < precision) {
-			if (s == lim_a || s == lim_b) return 404.0; // Checks if it tries to converge on a value outside the limits.
-			return newton_method(equ, var, s);
+			if (s == lim_a || s == lim_b) return { 404.0, 0 };
+			return { newton_method(equ, var, s), 0 };
 		}
 	}
-
-	return 404.0;
+	return { 404.0, 0 };
 }
 
+
+
+
 vector<double> equ_solver(string equ, string var, double a, double b) {
-	double current = a;
-	vector<double> zeros = {a,b};
-	vector<double> zeros_return;
+	vector<double> interest_points = { a, b };
+	vector<double> current = { a, 0 };
+	vector<double> zeros;
 	size_t MAX_ITER = 50;
 	size_t i = 0;
 
+	for (size_t j = 0; j < interest_points.size()-1; j) {
+		printf("iter: %zd: Checking between %lf and %lf\n", j, interest_points[j], interest_points[j + 1]);
+		current = brent_method(equ, var, interest_points[j] + 0.1, interest_points[j + 1] - 0.1);
+		if (current[0] != 404 && in_arr_flt(interest_points, current[0]) != true) {
 
-	for (size_t j = 0; j < zeros.size()-1; j) {
-		printf("iter: %zd: Checking between %lf and %lf\n", j, zeros[j], zeros[j + 1]);
-		current = brent_method(equ, var, zeros[j] + 0.00001, zeros[j+1] - 0.00001);
-		if (current != 404 && in_arr_flt(zeros, current) != true) { 
-			printf("Zero %lf was found.\n", current);
-			zeros.push_back(current); 
+			if (current[1] == 0) { // This detects an actual zero (0 for zero 1 for interest point)
+				printf("Zero point %lf was found.\n", current[0]);
+				zeros.push_back(current[0]);
+			}
+			else {
+				printf("Interest point %lf was found.\n", current[0]);
+			}
+			interest_points.push_back(current[0]);
 			//j = 0;
-			zeros = bubble_sort(zeros);
-			printf("New zero list: ");
-			for (long double t : zeros) printf("%lf ", t);
+			interest_points = bubble_sort(interest_points);
+			printf("New interest list: ");
+			for (double t : interest_points) printf("%lf ", t);
 			std::cout << '\n';
 		}
 		else {
