@@ -6,6 +6,7 @@
 #include "central.h"
 #include <vector>
 #include <iterator>
+#include <chrono>
 using std::string;
 using std::vector;
 using std::cout;
@@ -15,31 +16,40 @@ using std::cin;
 int main()
 {   
 
-    //cout << '\n' << integration(1.1,-100,"(1/(x-1))",'x');
-    //cout << '\n' << derivative_point("(1/(x-1))-2", 100, 'x');
+    //cout << '\n' << integration(0.1,-0.1,"1/(x)","x") << '\n';
     
     
     //cout << "\n" << brent_method("(x^3-6*x^2+11*x-6)/(x^2-1)+2.71^(x/5)-10/(x-0.5)", "x", 1, 10);    
- 
     //return 0;
-    vector<double> zeros = equ_solver("(x^3-6*x^2+11*x-6)/(x^2-1)+2.71^(x/5)-10/(x-0.5)", "x", -10, 10);
+    auto start = std::chrono::high_resolution_clock::now();
+    vector<double> zeros = equ_solver("1/(x-3)-5", "x", -100, 100); 
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    //cout << bisection_method("1/(x)-10", "x", -10.1, 10) << '\n';
+    cout << elapsed.count() << '\n';
+    
     for (double i : zeros) printf("%lf ", i);
 
-
+    //cout << exp_solver("-2^2");
+    //for (string i : post_fix_conv("(-x)^2")) cout << i;
     return 0;
-    string exp;
+    string equ;
     double solution;
+    //vector<double> zeros;
     //for (char i : exp) cout << i;
 
-    cout << "Type an expression\n";
+    cout << "Type an equation to find the roots of. Use variable 'x'. Type \"exit\" to close.\n";
     while (true) {
-        cin >> exp;
-        vector<string> p_fix = post_fix_conv(exp);
-        solution = post_fix_exp_solver(p_fix);
-        cout << "POST FIX: ";
-        for (string i : p_fix) cout << i + " ";
-        printf("\n>>\t%.8f\n\n", solution);
-    
+        cin >> equ;
+        auto start = std::chrono::high_resolution_clock::now();
+        if (equ == "exit") break;
+        zeros = equ_solver(equ, "x", -5, 5);
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        cout << "\n\nSolutions:  >> {";
+        for (double i : zeros) printf("%lf ", i);
+        cout << "}\n\n";
+        cout << elapsed.count() << '\n';
     }
     
 
