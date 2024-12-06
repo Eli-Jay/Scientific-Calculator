@@ -20,5 +20,6 @@ std::vector<double> equ_solver(std::string equ, std::string var, double a, doubl
 double f_pf(std::vector<std::string> equ, std::string var, double x);
 double f_double_prime_pf(std::vector<std::string> equ_pf, std::string var, double point);
 double exp_solver(std::string exp);
+std::vector<double> find_range(std::string equ, std::string var);
 
 #endif // CENTRAL_H

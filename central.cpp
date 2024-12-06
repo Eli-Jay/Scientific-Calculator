@@ -338,11 +338,7 @@ double f_double_prime_pf(vector<string> equ_pf, string var, double point) {
 
 
 
-// Expression solving (NO CAS)
-
-
-
-
+// Expression solving (NO CAS) newtons method (very effective given a good guess)
 double newton_method(string equ, string var, double guess) {
 	vector<string> equ_postfix = post_fix_conv(equ);
 
@@ -382,7 +378,7 @@ double newton_method(string equ, string var, double guess) {
 	return 404;
 }
 
-// Bisection method. Garuantees convergence.
+// Bisection method. (Garuantees convergence, but doesn't detect tangents.)
 double bisection_method(string equ, string var, double a, double b) {
 	vector<string> equ_pf = post_fix_conv(equ);
 	size_t small_iter = 0;
@@ -439,6 +435,7 @@ double bisection_method(string equ, string var, double a, double b) {
 	return 34434.404;  // Return if max iterations reached without convergence
 }
 
+// Used to detect anomolies. Removed from brent method to make faster. Only called once so it doesn't repeat process every brent call.
 vector<double> anomalies(string equ, string var, double lim_a, double lim_b) {
 	vector<string> equ_postfix = post_fix_conv(equ);
 	vector<double> x_anom = {lim_a, lim_b};
@@ -488,7 +485,7 @@ vector<double> anomalies(string equ, string var, double lim_a, double lim_b) {
 }
 
 
-// Brent method. 
+// heavily modified brent method. This does most of the work for detecting zeros.
 vector<double> brent_method(string equ, string var, double lim_a, double lim_b) {
 	vector<string> equ_postfix = post_fix_conv(equ);
 	double a = lim_a;
@@ -602,7 +599,7 @@ vector<double> brent_method(string equ, string var, double lim_a, double lim_b) 
 			std::swap(f_a, f_b);
 		}
 
-		//printf("%.19f\n", s);
+		//printf("%lf\n", s);
 		if (std::abs(f_s) < precision) {
 			if (s == lim_a || s == lim_b) return { 404.0, 0 }; // Checks if it tries to converge on a value outside the limits.
 
@@ -612,14 +609,22 @@ vector<double> brent_method(string equ, string var, double lim_a, double lim_b) 
 
 	return { 404.0, 0 };
 }
+// Instead of this function, when brent method tried to close in on a zero outside of the given range, return {lim_(whichever), 3} and equ_solver calls
+// newton method on lim_(whichever) and increase lim_(whichever) by 100 a maximum of 15 times. 
+vector<double> find_range(string equ, string var) {
+	vector<string> equ_postfix = post_fix_conv(equ);
+	return { 0,0 };
+}
 
 
 
 
 
+
+// Breaks the equation into segments and calls brent method to evalue each segment. Also calls anomalies to break the function into segments beforehand to avoid anomalies.
 vector<double> equ_solver(string equ, string var, double a, double b) {
 
-	vector<double> interest_points = anomalies(equ, var, a, b);
+	vector<double> interest_points = anomalies(equ, var, a, b); // Looks for anomolies, breaking the function into segments
 	vector<double> current = { a, 0 };
 	vector<double> zeros;
 	double oppos_zero;
@@ -629,19 +634,19 @@ vector<double> equ_solver(string equ, string var, double a, double b) {
 
 	//return interest_points;
 	for (size_t j = 0; j < interest_points.size()-1; j) {
-		printf("iter: %zd: Checking between %lf and %lf\n", j, interest_points[j], interest_points[j + 1]);
+		//printf("iter: %zd: Checking between %lf and %lf\n", j, interest_points[j], interest_points[j + 1]);
 		current = brent_method(equ, var, interest_points[j], interest_points[j + 1]);
 		if (current[0] != 404 && in_arr_flt(interest_points, current[0]) != true) {
 
 			if (current[1] == 0) { // This detects an actual zero (0 for zero 1 for interest point)
-				printf("Zero point %lf was found.\n Now checking opposite sign.\n", current[0]);
+				//printf("Zero point %lf was found.\n Now checking opposite sign.\n", current[0]);
 				zeros.push_back(current[0]);
 				interest_points.push_back(current[0]);
 				oppos_zero = newton_method(equ, var, current[0] * -1);
-				printf("OPPO: %lf\n", oppos_zero);
+				//printf("OPPO: %lf\n", oppos_zero);
 				if (oppos_zero != 404 && in_arr_flt(interest_points, oppos_zero) != true ) {
-					printf("Opposite sign found.\n");
-					zeros.push_back(oppos_zero);
+					//printf("Opposite sign found.\n");
+					//zeros.push_back(oppos_zero);
 					interest_points.push_back(oppos_zero);
 				}
 			}
@@ -651,9 +656,9 @@ vector<double> equ_solver(string equ, string var, double a, double b) {
 			
 			//j = 0;
 			interest_points = bubble_sort(interest_points);
-			printf("New interest list: ");
-			for (double t : interest_points) printf("%lf ", t);
-			std::cout << '\n';
+			//printf("New interest list: ");
+			//for (double t : interest_points) printf("%lf ", t);
+			//std::cout << '\n';
 		}
 		else {
 			j++;
